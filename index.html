@@ -53,7 +53,11 @@ button.del:hover{color:var(--warn)}
 .extra{display:grid;grid-template-columns:8em 1fr auto;gap:8px;align-items:center}
 .speech{display:grid;grid-template-columns:10.5em 1fr auto;gap:8px;align-items:start}
 .speech input,.speech select{padding:8px}
-.spops{display:flex;flex-direction:column;gap:2px}
+.spops{display:grid;grid-template-columns:repeat(2,auto);gap:2px}
+button.mv{border:none;background:none;color:var(--muted);padding:4px 6px}
+button.mv:hover:not(:disabled){color:var(--accent);background:var(--accent-soft)}
+button.mv:disabled{opacity:.3;cursor:default}
+.agenda .head .ops{display:flex;gap:0}
 button.ins{border:none;background:none;color:var(--accent);padding:4px 6px;font-weight:700}
 button.ins:hover{background:var(--accent-soft)}
 .speech.new{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px;transition:outline-color 1s}
@@ -89,6 +93,8 @@ dialog#aiDlg::backdrop{background:rgba(0,0,0,.45)}
 @media (max-width:560px){
   .cfgmem{grid-template-columns:1fr 1fr}.cfgmem .ops{grid-column:1/-1;justify-content:flex-end}.cfghead{display:none}
   .speech{grid-template-columns:1fr auto}.speech textarea{grid-column:1/-1;grid-row:2}
+  .spops{grid-template-columns:repeat(4,auto);align-self:center}
+  .agenda .head{grid-template-columns:2em 1fr}.agenda .head .ops{grid-column:1/-1;justify-content:flex-end}
   .mem{grid-template-columns:1fr auto}.mem .role{grid-column:1/-1}
   .extra{grid-template-columns:1fr 1fr auto}
 }
@@ -175,7 +181,7 @@ dialog#aiDlg::backdrop{background:rgba(0,0,0,.45)}
 
 <section>
   <h2><span class="no">13</span>協議事項</h2>
-  <p class="hint">議題ごとに「上程」「質問」「回答」などの発言を順番に追加します。発言の右の「＋」で、その下に発言を挿入できます。</p>
+  <p class="hint">議題ごとに「上程」「質問」「回答」などの発言を順番に追加します。発言の右の「＋」でその下に発言を挿入、「↑」「↓」で順番を入れ替えられます。</p>
   <div id="kyogi" style="display:grid;gap:12px"></div>
   <div><button type="button" class="link" data-addagenda="kyogi">＋ 協議事項を追加</button></div>
 </section>
@@ -328,6 +334,8 @@ function speechRow(list, i, rerender){
     speakerSelect(sp),
     el("textarea",{value:sp.text, placeholder:"発言内容", "aria-label":"発言内容", on:{input:e=>{sp.text=e.target.value; save();}}}),
     el("div",{className:"spops"},
+      el("button",{type:"button", className:"mv", title:"上へ移動", "aria-label":"上へ移動", textContent:"↑", disabled:i===0, on:{click:()=>{list.splice(i-1,0,...list.splice(i,1)); save(); rerender(i-1);}}}),
+      el("button",{type:"button", className:"mv", title:"下へ移動", "aria-label":"下へ移動", textContent:"↓", disabled:i===list.length-1, on:{click:()=>{list.splice(i+1,0,...list.splice(i,1)); save(); rerender(i+1);}}}),
       el("button",{type:"button", className:"ins", title:"この下に発言を挿入", "aria-label":"この下に発言を挿入", textContent:"＋", on:{click:()=>{list.splice(i+1,0,{who:"",text:""}); save(); rerender(i+1);}}}),
       el("button",{type:"button", className:"del", title:"この発言を削除", "aria-label":"この発言を削除", textContent:"✕", on:{click:()=>{list.splice(i,1); save(); rerender();}}}))
   );
@@ -396,7 +404,10 @@ function renderAgenda(key){
     return el("div",{className:"agenda"},
       el("div",{className:"head"}, el("span",{textContent:(i+1)+")"}),
         el("input",{value:ag.title, placeholder:"議題名（例：〇〇〇について）", "aria-label":"議題名", on:{input:e=>{ag.title=e.target.value; save();}}}),
-        el("button",{type:"button", className:"del", textContent:"✕", title:"この議題を削除", on:{click:()=>{list.splice(i,1); save(); renderAgenda(key);}}})),
+        el("div",{className:"ops"},
+          el("button",{type:"button", className:"mv", textContent:"↑", title:"議題を上へ移動", "aria-label":"議題を上へ移動", disabled:i===0, on:{click:()=>{list.splice(i-1,0,...list.splice(i,1)); save(); renderAgenda(key);}}}),
+          el("button",{type:"button", className:"mv", textContent:"↓", title:"議題を下へ移動", "aria-label":"議題を下へ移動", disabled:i===list.length-1, on:{click:()=>{list.splice(i+1,0,...list.splice(i,1)); save(); renderAgenda(key);}}}),
+          el("button",{type:"button", className:"del", textContent:"✕", title:"この議題を削除", on:{click:()=>{list.splice(i,1); save(); renderAgenda(key);}}}))),
       sp);
   }));
 }
