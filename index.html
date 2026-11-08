@@ -51,8 +51,8 @@ button.del:hover{color:var(--warn)}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .seg button.abs[aria-pressed="true"]{background:var(--warn);color:var(--paper)}
 .extra{display:grid;grid-template-columns:8em 1fr auto;gap:8px;align-items:center}
-.speech{display:grid;grid-template-columns:8.5em 1fr auto;gap:8px;align-items:start}
-.speech input{padding:8px}
+.speech{display:grid;grid-template-columns:10.5em 1fr auto;gap:8px;align-items:start}
+.speech input,.speech select{padding:8px}
 .agenda{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px;background:var(--bg)}
 .agenda .head{display:grid;grid-template-columns:2.2em 1fr auto;gap:8px;align-items:center}
 .agenda .head span{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
@@ -299,10 +299,29 @@ function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch
 function bindInput(id){ const e=$(id); e.value=S[id]??""; e.oninput=()=>{S[id]=e.value; save();}; }
 function status(msg, cls=""){ const s=$("status"); s.textContent=msg; s.className=cls; }
 
+// 発言者は出席者（委員会メンバーの出席者＋追加した出席者）から選ぶ
+function speakerOptions(){
+  return MEMBERS_NOW().filter(m=>!S.absent.includes(m.name)).map(m=>({who:whoOf(m), label:`${whoOf(m)}（${m.role}）`}))
+    .concat(S.extras.filter(x=>(x.name||"").trim()).map(x=>({who:surname(x.name), label:`${surname(x.name)}（${(x.role||"").trim()||"出席者"}）`})));
+}
+function speakerSelect(obj){
+  const sel = el("select",{className:"who", "aria-label":"発言者"});
+  sel._refresh = () => {
+    const opts = speakerOptions(), cur = (obj.who||"").trim();
+    const nodes = [el("option",{value:"", textContent:"（発言者なし）"})].concat(opts.map(o=>el("option",{value:o.who, textContent:o.label})));
+    if(cur && !opts.some(o=>o.who===cur)) nodes.push(el("option",{value:cur, textContent:`${cur}（出席者以外）`}));
+    sel.replaceChildren(...nodes); sel.value = cur;
+  };
+  sel.onchange = () => { obj.who = sel.value; save(); };
+  sel._refresh();
+  return sel;
+}
+function refreshSpeakerSelects(){ document.querySelectorAll("select.who").forEach(s=>s._refresh && s._refresh()); }
+
 function speechRow(list, i, rerender){
   const sp = list[i];
   return el("div",{className:"speech"},
-    el("input",{value:sp.who, placeholder:"発言者", list:"speakers", "aria-label":"発言者", on:{input:e=>{sp.who=e.target.value; save();}}}),
+    speakerSelect(sp),
     el("textarea",{value:sp.text, placeholder:"発言内容", "aria-label":"発言内容", on:{input:e=>{sp.text=e.target.value; save();}}}),
     el("button",{type:"button", className:"del", title:"この発言を削除", textContent:"✕", on:{click:()=>{list.splice(i,1); save(); rerender();}}})
   );
@@ -339,6 +358,7 @@ function attendees(){
     .concat(S.extras.filter(x=>(x.name||"").trim()).map(x=>({role:(x.role||"").trim(), name:x.name.trim()})));
 }
 function renderSakusei(){
+  refreshSpeakerSelects();
   const sel=$("sakusei"), list=attendees();
   if(S.sakuseiName && !list.some(a=>a.name===S.sakuseiName)){ S.sakuseiName=""; S.sakuseiRole=""; save(); }
   sel.replaceChildren(el("option",{value:"", textContent:list.length?"（選択してください）":"（出席者がいません）"}),
@@ -350,7 +370,7 @@ function renderSakusei(){
 function renderAisatsu(){
   $("aisatsu").replaceChildren(...S.aisatsu.map(a=>{
     const body = el("div",{className:"speech"},
-      el("input",{value:a.who, list:"speakers", "aria-label":"発言者", on:{input:e=>{a.who=e.target.value; save();}}}),
+      speakerSelect(a),
       el("textarea",{value:a.text, placeholder:a.title+"の内容", "aria-label":a.title, on:{input:e=>{a.text=e.target.value; save();}}}),
       el("span"));
     body.hidden = a.skip;
