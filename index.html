@@ -53,6 +53,10 @@ button.del:hover{color:var(--warn)}
 .extra{display:grid;grid-template-columns:8em 1fr auto;gap:8px;align-items:center}
 .speech{display:grid;grid-template-columns:10.5em 1fr auto;gap:8px;align-items:start}
 .speech input,.speech select{padding:8px}
+.spops{display:flex;flex-direction:column;gap:2px}
+button.ins{border:none;background:none;color:var(--accent);padding:4px 6px;font-weight:700}
+button.ins:hover{background:var(--accent-soft)}
+.speech.new{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px;transition:outline-color 1s}
 .agenda{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px;background:var(--bg)}
 .agenda .head{display:grid;grid-template-columns:2.2em 1fr auto;gap:8px;align-items:center}
 .agenda .head span{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
@@ -171,7 +175,7 @@ dialog#aiDlg::backdrop{background:rgba(0,0,0,.45)}
 
 <section>
   <h2><span class="no">13</span>協議事項</h2>
-  <p class="hint">議題ごとに「上程」「質問」「回答」などの発言を順番に追加します。</p>
+  <p class="hint">議題ごとに「上程」「質問」「回答」などの発言を順番に追加します。発言の右の「＋」で、その下に発言を挿入できます。</p>
   <div id="kyogi" style="display:grid;gap:12px"></div>
   <div><button type="button" class="link" data-addagenda="kyogi">＋ 協議事項を追加</button></div>
 </section>
@@ -323,13 +327,16 @@ function speechRow(list, i, rerender){
   return el("div",{className:"speech"},
     speakerSelect(sp),
     el("textarea",{value:sp.text, placeholder:"発言内容", "aria-label":"発言内容", on:{input:e=>{sp.text=e.target.value; save();}}}),
-    el("button",{type:"button", className:"del", title:"この発言を削除", textContent:"✕", on:{click:()=>{list.splice(i,1); save(); rerender();}}})
+    el("div",{className:"spops"},
+      el("button",{type:"button", className:"ins", title:"この下に発言を挿入", "aria-label":"この下に発言を挿入", textContent:"＋", on:{click:()=>{list.splice(i+1,0,{who:"",text:""}); save(); rerender(i+1);}}}),
+      el("button",{type:"button", className:"del", title:"この発言を削除", "aria-label":"この発言を削除", textContent:"✕", on:{click:()=>{list.splice(i,1); save(); rerender();}}}))
   );
 }
 function speechList(container, list){
-  const render = () => {
+  const render = (focusIdx) => {
     container.replaceChildren(...list.map((_,i)=>speechRow(list,i,render)),
-      el("div",{}, el("button",{type:"button", className:"link", textContent:"＋ 発言を追加", on:{click:()=>{list.push({who:"",text:""}); save(); render();}}})));
+      el("div",{}, el("button",{type:"button", className:"link", textContent:"＋ 発言を追加", on:{click:()=>{list.push({who:"",text:""}); save(); render(list.length-1);}}})));
+    if(typeof focusIdx==="number"){ const row=container.querySelectorAll(".speech")[focusIdx]; if(row){ row.classList.add("new"); row.querySelector("select").focus(); setTimeout(()=>row.classList.remove("new"),1200); } }
   };
   render();
 }
